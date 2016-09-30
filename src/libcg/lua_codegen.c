@@ -10,13 +10,13 @@
 #define CG_OUTPUT fprintf
 #define cg_debug printf
 
-char* cg_text = 0;
+static char* cg_text = 0;
 
-char* buffer = 0;
-char* buffer2 = 0;
-array* cg_stack;
-u64 max_level = 0;
-int cg_indent = 0;
+static char* buffer = 0;
+static char* buffer2 = 0;
+static array* cg_stack;
+static u64 max_level = 0;
+static int cg_indent = 0;
 
 typedef struct {
   FILE* decls;
@@ -27,7 +27,7 @@ typedef struct {
 
 cg_files_t* cg_fds;
 
-string* cg_node(ast_t* node);
+static string* cg_node(ast_t* node);
 
 //
 #define scan_string(str_var, format, ...)                                      \
@@ -41,7 +41,7 @@ string* cg_node(ast_t* node);
     array_push(cg_stack, (void*)str);                                          \
   } while (false);
 
-string* cg_type(u64 ty_id) {
+static string* cg_type(u64 ty_id) {
   ty_t type = ty(ty_id);
   // cached?
   if (type.cg != 0) {
@@ -54,7 +54,6 @@ string* cg_type(u64 ty_id) {
   case TY_POINTER:
   case TY_REFERENCE:
     st_append(&buffer, cg_type(type.ptr.to));
-    st_append_c(&buffer, "*");
     break;
   case TY_VECTOR:
     st_append(&buffer, cg_type(type.vector.to));
@@ -67,7 +66,6 @@ string* cg_type(u64 ty_id) {
     fl_assert(type.id != 0);
 
     st_append_c(&buffer, type.id->value);
-    st_append_c(&buffer, "__fnptr");
   } break;
   case TY_TEMPLATE: {
     // REVIEW assert... will see in the future if needed, i consider this
@@ -85,7 +83,7 @@ string* cg_type(u64 ty_id) {
   return type.cg = buffer;
 }
 
-string* st_dquote(const string* str) {
+static string* st_dquote(const string* str) {
   st_uc_t ch;
   char* rep;
 
@@ -162,20 +160,20 @@ string* st_dquote(const string* str) {
   return out;
 }
 
-void cg_dbg(ast_t* node, u64 level) {
+static void cg_dbg(ast_t* node, u64 level) {
 #ifdef CG_DEBUG
   cg_debug("%*s", (int)level, " ");
-  cg_debug("// ");
+  cg_debug("-- ");
   ast_dump_one(node);
   cg_debug("\n");
 
   for (int i = 0; i < cg_stack->length; ++i) {
-    cg_debug("// stack[%d] %s\n", i, ((string*)cg_stack->values[i])->value);
+    cg_debug("-- stack[%d] %s\n", i, ((string*)cg_stack->values[i])->value);
   }
 #endif
 }
 
-ast_action_t __codegen_cb(ast_trav_mode_t mode, ast_t* node, ast_t* parent,
+static ast_action_t __codegen_cb(ast_trav_mode_t mode, ast_t* node, ast_t* parent,
                           u64 level, void* userdata_in, void* userdata_out) {
 
   fl_assert(node != 0);
@@ -184,7 +182,7 @@ ast_action_t __codegen_cb(ast_trav_mode_t mode, ast_t* node, ast_t* parent,
   switch (node->type) {
   case AST_PROGRAM: {
     if (mode == AST_TRAV_LEAVE) {
-      CG_OUTPUT(cg_fds->run, "void run()");
+      CG_OUTPUT(cg_fds->run, "function run()");
       while (cg_stack->length) {
         CG_OUTPUT(cg_fds->run, "%s\n", ((string*)array_pop(cg_stack))->value);
       }
@@ -211,7 +209,7 @@ ast_action_t __codegen_cb(ast_trav_mode_t mode, ast_t* node, ast_t* parent,
       }
 
       string* block = st_new(buffer_size, st_enc_utf8);
-      st_append_c(&block, "{\n");
+      st_append_c(&block, "\n");
 
       for (int i = node->stack; i < cg_stack->length; ++i) {
         snprintf(buffer, 1024, "%*s%s;\n", cg_indent, " ",
@@ -348,7 +346,7 @@ ast_action_t __codegen_cb(ast_trav_mode_t mode, ast_t* node, ast_t* parent,
       if (node->var.scope == AST_SCOPE_GLOBAL) {
         // TODO REVIEW extern may need necessary
         // there is no ffi var atm.
-        stack_append("/* globvar %s */", id->value);
+        stack_append("-- globvar %s --", id->value);
         CG_OUTPUT(cg_fds->decls, "globvar %s %s;\n",
                   cg_type(node->ty_id)->value, id->value);
       } else {
@@ -460,7 +458,7 @@ ast_action_t __codegen_cb(ast_trav_mode_t mode, ast_t* node, ast_t* parent,
 
         if (node->func.type == AST_FUNC_OPERATOR ||
             node->func.type == AST_FUNC_PROPERTY) {
-          CG_OUTPUT(cg_fds->functions, "force_inline ");
+          // CG_OUTPUT(cg_fds->functions, "force_inline ");
         }
 
         CG_OUTPUT(cg_fds->functions, "%s %s (%s) %s",
@@ -470,7 +468,7 @@ ast_action_t __codegen_cb(ast_trav_mode_t mode, ast_t* node, ast_t* parent,
         // TODO skip this processs atm
         return AST_SEARCH_SKIP;
 
-        stack_append("extern %s %s (%s)",
+        stack_append("local %s %s (%s)",
                      cg_type(node->func.ret_type->ty_id)->value,
                      node->func.uid->value, parameters->value);
       }
@@ -534,10 +532,10 @@ ast_action_t __codegen_cb(ast_trav_mode_t mode, ast_t* node, ast_t* parent,
     string* block = cg_node(node->if_stmt.block);
     string* test = cg_node(node->if_stmt.test);
     if (!node->if_stmt.alternate) {
-      stack_append("if (%s) %s", test->value, block->value);
+      stack_append("if (%s) then %s end", test->value, block->value);
     } else {
       string* alternate = cg_node(node->if_stmt.alternate);
-      stack_append("if (%s) %s else %s", test->value, block->value,
+      stack_append("if (%s) then %s else %s end", test->value, block->value,
                    alternate->value);
     }
     return AST_SEARCH_SKIP; // manual traverse
@@ -588,13 +586,13 @@ case AST_STMT_LOG:
   case AST_ATTRIBUTE:
     break;
     */
-  default: { printf("// node ignored?! %d\n", node->type); }
+  default: { printf("-- node ignored?! %d\n", node->type); }
   }
 
   return AST_SEARCH_CONTINUE;
 }
 
-string* cg_node(ast_t* node) {
+static string* cg_node(ast_t* node) {
   node->stack = cg_stack->length;
   ast_traverse(node, __codegen_cb, node, 0, 0, 0);
   int buffer_size;
@@ -611,18 +609,18 @@ string* cg_node(ast_t* node) {
   return node_str;
 }
 
-void cg_type_table(ast_t* root) {
-  CG_OUTPUT(cg_fds->types, "type_t types[] = {\n");
+static void cg_type_table(ast_t* root) {
+  CG_OUTPUT(cg_fds->types, "type_t types = {\n");
   for (int i = 0; i < ts_type_size_s; ++i) {
-    CG_OUTPUT(cg_fds->types, "{// id: %d\n", i);
+    CG_OUTPUT(cg_fds->types, "{-- id: %d\n", i);
     ty_t type = ty(i);
     if (type.id != 0) {
       st_dump_header(type.id, buffer2);
-      CG_OUTPUT(cg_fds->types, ".id = (string*)\"%s\" \"%s\",\n", buffer2,
+      CG_OUTPUT(cg_fds->types, ".id = \"%s\" \"%s\",\n", buffer2,
                 type.id->value);
     } else {
       // WTF!
-      CG_OUTPUT(cg_fds->types, ".id = (string*)0,\n");
+      CG_OUTPUT(cg_fds->types, ".id = 0,\n");
     }
     CG_OUTPUT(cg_fds->types, ".of = %d,\n", type.of);
     switch (type.of) {
@@ -643,7 +641,7 @@ void cg_type_table(ast_t* root) {
   CG_OUTPUT(cg_fds->types, "};\n");
 }
 
-char* fl_codegen(ast_t* root) {
+char* fl_codegen_lua(ast_t* root) {
   // log_debug_level = 10;
   // ty_dump_table();
   // ast_dump(root);
@@ -655,16 +653,10 @@ char* fl_codegen(ast_t* root) {
   array_newcap(cg_stack, 5);
 
   cg_fds = calloc(sizeof(cg_files_t), 1);
-  cg_fds->decls = fopen("codegen/decls.c", "w");
-  cg_fds->types = fopen("codegen/types.c", "w");
-  cg_fds->functions = fopen("codegen/functions.c", "w");
-  cg_fds->run = fopen("codegen/run.c", "w");
-
-  CG_OUTPUT(cg_fds->run, "\n"
-                         "#include \"header.c\"\n"
-                         "#include \"decls.c\"\n"
-                         "#include \"types.c\"\n"
-                         "#include \"functions.c\"\n\n");
+  cg_fds->decls = fopen("codegen/decls.lua", "w");
+  cg_fds->types = fopen("codegen/types.lua", "w");
+  cg_fds->functions = fopen("codegen/functions.lua", "w");
+  cg_fds->run = fopen("codegen/run.lua", "w");
 
   cg_type_table(root);
   ast_traverse(root, __codegen_cb, 0, 0, 0, 0);

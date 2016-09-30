@@ -10,13 +10,13 @@
 #define CG_OUTPUT fprintf
 #define cg_debug printf
 
-char* cg_text = 0;
+static char* cg_text = 0;
 
-char* buffer = 0;
-char* buffer2 = 0;
-array* cg_stack;
-u64 max_level = 0;
-int cg_indent = 0;
+static char* buffer = 0;
+static char* buffer2 = 0;
+static array* cg_stack;
+static u64 max_level = 0;
+static int cg_indent = 0;
 
 typedef struct {
   FILE* decls;
@@ -27,7 +27,7 @@ typedef struct {
 
 cg_files_t* cg_fds;
 
-string* cg_node(ast_t* node);
+static string* cg_node(ast_t* node);
 
 //
 #define scan_string(str_var, format, ...)                                      \
@@ -41,7 +41,7 @@ string* cg_node(ast_t* node);
     array_push(cg_stack, (void*)str);                                          \
   } while (false);
 
-string* cg_type(u64 ty_id) {
+static string* cg_type(u64 ty_id) {
   ty_t type = ty(ty_id);
   // cached?
   if (type.cg != 0) {
@@ -85,7 +85,7 @@ string* cg_type(u64 ty_id) {
   return type.cg = buffer;
 }
 
-string* st_dquote(const string* str) {
+static string* st_dquote(const string* str) {
   st_uc_t ch;
   char* rep;
 
@@ -162,7 +162,7 @@ string* st_dquote(const string* str) {
   return out;
 }
 
-void cg_dbg(ast_t* node, u64 level) {
+static void cg_dbg(ast_t* node, u64 level) {
 #ifdef CG_DEBUG
   cg_debug("%*s", (int)level, " ");
   cg_debug("// ");
@@ -175,7 +175,7 @@ void cg_dbg(ast_t* node, u64 level) {
 #endif
 }
 
-ast_action_t __codegen_cb(ast_trav_mode_t mode, ast_t* node, ast_t* parent,
+static ast_action_t __codegen_cb(ast_trav_mode_t mode, ast_t* node, ast_t* parent,
                           u64 level, void* userdata_in, void* userdata_out) {
 
   fl_assert(node != 0);
@@ -594,7 +594,7 @@ case AST_STMT_LOG:
   return AST_SEARCH_CONTINUE;
 }
 
-string* cg_node(ast_t* node) {
+static string* cg_node(ast_t* node) {
   node->stack = cg_stack->length;
   ast_traverse(node, __codegen_cb, node, 0, 0, 0);
   int buffer_size;
@@ -611,7 +611,7 @@ string* cg_node(ast_t* node) {
   return node_str;
 }
 
-void cg_type_table(ast_t* root) {
+static void cg_type_table(ast_t* root) {
   CG_OUTPUT(cg_fds->types, "type_t types[] = {\n");
   for (int i = 0; i < ts_type_size_s; ++i) {
     CG_OUTPUT(cg_fds->types, "{// id: %d\n", i);

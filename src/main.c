@@ -14,7 +14,13 @@
 // 5 faltal error
 // 6 unexpected error
 
+typedef enum langtype {
+  C,
+  lua
+} langtype;
+
 int main(int argc, char** argv) {
+  langtype language = C;
   // TODO 0 means REPL
   if (argc == 1) {
     fprintf(stderr, "Usage: flan file.fl [-v] [-nocore]\n");
@@ -31,6 +37,13 @@ int main(int argc, char** argv) {
     if (strcmp("-nocore", argv[i]) == 0) {
       log_debug_level = 10;
       core = false;
+    }
+
+    if (strcmp("-lang-c", argv[i]) == 0) {
+      language = C;
+    }
+    else if (strcmp("-lang-lua", argv[i]) == 0) {
+      language = lua;
     }
   }
 
@@ -60,7 +73,11 @@ int main(int argc, char** argv) {
   // ast_dump_s(root);
 
   // print to std atm...
-  fl_codegen(root);
+  if (language == C) fl_codegen(root);
+  else if (language == lua) fl_codegen_lua(root);
+  else {
+    fprintf(stderr, "Specify output language using -lang-c or -lang-lua\n");
+  }
 
   flang_exit(root);
 
