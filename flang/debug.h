@@ -29,14 +29,12 @@
 
 #include <libgen.h>
 
-extern void __sanitizer_print_stack_trace();
 extern int log_debug_level;
 
 #define fl_assert(chk)                                                         \
   if (!(chk)) {                                                                \
     fprintf(stderr, "%s: Assertion failed at %s:%d @ %s\n", #chk, __FILE__,    \
             __LINE__, __FUNCTION__);                                           \
-    __sanitizer_print_stack_trace();                                           \
     exit(5);                                                                   \
   }
 
@@ -44,7 +42,6 @@ extern int log_debug_level;
   fprintf(stderr, "Faltal error at %s:%d @ %s\n", __FILE__, __LINE__,          \
           __FUNCTION__);                                                       \
   fprintf(stderr, fmt, __VA_ARGS__);                                           \
-  __sanitizer_print_stack_trace();                                             \
   exit(5);
 
 // 0 - error
@@ -64,7 +61,6 @@ extern int log_debug_level;
       fprintf(stderr, "\n");                                                   \
     }                                                                          \
     if (level == 0) {                                                          \
-      __sanitizer_print_stack_trace();                                         \
       exit(6);                                                                 \
     }                                                                          \
   }

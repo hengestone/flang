@@ -17,20 +17,14 @@ include_HEADERS = flang/flang.h \
   flang/libcg.h \
   flang/libts.h
 
-LLVM_CC_FLAGS=`llvm-config --cflags`
-# core executionengine mcjit interpreter analysis native bitwriter
-LLVM_LINK_FLAGS=`llvm-config --cxxflags --ldflags --system-libs --libs`
 
+bin_PROGRAMS = flangc
+flangc_SOURCES = src/main.c
+flangc_SOURCES += $(COMPILER_SOURCES)
 
-
-bin_PROGRAMS = flang
-flang_SOURCES = src/main.c
-flang_SOURCES += $(COMPILER_SOURCES)
-
-flang_CFLAGS = $(LLVM_CC_FLAGS)
-flang_LDFLAGS = $(LLVM_LINK_FLAGS) -lstdc++ -Wl -L/usr/local/lib '-lstringc'
-flang_LDADD = libfl_codegen.a libfl_ts.a libfl_parser.a libfl_ast.a $(LIBS)
-flang_DEPENDENCIES = libfl_codegen.a libfl_ts.a libfl_parser.a libfl_ast.a
+flangc_LDFLAGS = -lstdc++ -L/usr/local/lib '-lstringc -lm'
+flangc_LDADD = libfl_codegen.a libfl_ts.a libfl_parser.a libfl_ast.a $(LIBS)
+flangc_DEPENDENCIES = libfl_codegen.a libfl_ts.a libfl_parser.a libfl_ast.a
 
 
 SOURCES_TEST = test/tasks.c \
@@ -51,8 +45,8 @@ SOURCES_TEST = test/tasks.c \
 TESTS = tests
 check_PROGRAMS = tests
 
-tests_CFLAGS = $(LLVM_CC_FLAGS) -O1
-tests_LDFLAGS = $(LLVM_LINK_FLAGS) -O1 -lstdc++ -lrt -L/usr/local/lib '-lstringc'
+tests_CFLAGS = -O1
+tests_LDFLAGS = -O1 -lstdc++ -lrt -L/usr/local/lib '-lstringc'
 tests_LDADD = libfl_codegen.a libfl_ts.a libfl_parser.a libfl_ast.a $(LIBS)
 tests_DEPENDENCIES = libfl_codegen.a libfl_ts.a libfl_parser.a libfl_ast.a
 
@@ -97,4 +91,4 @@ libfl_ts_a_SOURCES = src/libts/type-utils.c \
 
 libfl_ts_a_LIBADD = libfl_ast.a
 
-libfl_codegen_a_SOURCES = src/libcg/c_codegen.c
+libfl_codegen_a_SOURCES = src/libcg/c_codegen.c src/libcg/lua_codegen.c

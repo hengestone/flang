@@ -23,6 +23,7 @@
 * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <stdarg.h>
 #include "flang/flang.h"
 #include "flang/libast.h"
 #include "flang/debug.h"
@@ -117,15 +118,10 @@ void ast_raise_error(ast_t* node, char* message, ...) {
   fprintf(stderr, "\n\n\x1B[31mError: %s\x1B[39m\n", buffer);
 
   if (!node) {
-    __sanitizer_print_stack_trace();
     return;
   }
 
   ast_print_error_at(node, buffer);
-
-  fprintf(stderr, "\n\nStackTrace:\n");
-
-  __sanitizer_print_stack_trace();
 
   longjmp(fl_on_error_jmp, 0);
 }
