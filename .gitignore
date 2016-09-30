@@ -15,3 +15,16 @@ ltmain.sh
 m4/
 missing
 test-driver
+/Makefile
+/config.log
+/config.status
+/ext/
+flangc
+lib*.a
+/src/.deps/
+/src/libast/.deps/
+.dirstamp
+*.o
+*.Po
+libtool
+
