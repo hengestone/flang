@@ -61,7 +61,7 @@ MSVS users. Replicate the sh above with some bat/ps1 file (piece of cake!)
 
 ### Develop in flang
 
-To develop in flang you need to compile it first.
+To develop in flang you need to compile it first. Install https://github.com/llafuente/string.c first!
 
 ### Usage
 
